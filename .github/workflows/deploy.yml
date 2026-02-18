@@ -1,0 +1,35 @@
+name: Deploy to Cloud Run
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  PROJECT_ID: cog01kb0514cddd9qamvpce5ve7mr
+  REGION: us-central1
+  SERVICE_NAME: contract-mining-backend
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup gcloud CLI
+      uses: google-github-actions/setup-gcloud@v2
+      with:
+        version: 'latest'
+    
+    - name: Authenticate using ADC token
+      run: |
+        echo '${{ secrets.GCP_ADC_TOKEN }}' > /tmp/adc.json
+        gcloud auth activate-service-account --key-file=/tmp/adc.json
+        gcloud config set project ${{ env.PROJECT_ID }}
+    
+    - name: Submit to Cloud Build
+      run: |
+        gcloud builds submit --config cloudbuild.yaml \
+          --substitutions=_SERVICE_NAME=${{ env.SERVICE_NAME }},_REGION=${{ env.REGION }},_GOOGLE_API_KEY=${{ secrets.GOOGLE_API_KEY }}
