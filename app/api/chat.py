@@ -28,7 +28,8 @@ async def chat(request: ChatRequest):
             "response": result.get("response", ""),
             "model": result.get("model", "gemini-1.5-pro"),
             "tokens": len(result.get("response", "").split()),
-            "source": "gcp_vertex_ai"
+            "source": "gcp_vertex_ai",
+            "search_method": result.get("search_method", "unknown")
         }
         
     except Exception as e:
