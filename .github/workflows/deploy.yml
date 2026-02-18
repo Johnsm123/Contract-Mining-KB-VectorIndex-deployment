@@ -18,16 +18,13 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
     
-    - name: Setup gcloud CLI
-      uses: google-github-actions/setup-gcloud@v2
+    - name: Authenticate to Google Cloud
+      uses: google-github-actions/auth@v2
       with:
-        version: 'latest'
+        credentials_json: ${{ secrets.GCP_ADC_TOKEN }}
     
-    - name: Authenticate using ADC token
-      run: |
-        echo '${{ secrets.GCP_ADC_TOKEN }}' > /tmp/adc.json
-        gcloud auth activate-service-account --key-file=/tmp/adc.json
-        gcloud config set project ${{ env.PROJECT_ID }}
+    - name: Set up Cloud SDK
+      uses: google-github-actions/setup-gcloud@v2
     
     - name: Submit to Cloud Build
       run: |
