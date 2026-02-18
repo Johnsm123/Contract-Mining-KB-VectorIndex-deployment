@@ -1,0 +1,58 @@
+steps:
+  # Build the container image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/${_SERVICE_NAME}:$COMMIT_SHA'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/${_SERVICE_NAME}:latest'
+      - '.'
+
+  # Push the container image to Container Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'gcr.io/$PROJECT_ID/${_SERVICE_NAME}:$COMMIT_SHA'
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'gcr.io/$PROJECT_ID/${_SERVICE_NAME}:latest'
+
+  # Deploy container image to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - '${_SERVICE_NAME}'
+      - '--image'
+      - 'gcr.io/$PROJECT_ID/${_SERVICE_NAME}:$COMMIT_SHA'
+      - '--region'
+      - '${_REGION}'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+      - '--service-account'
+      - 'contract-mining@$PROJECT_ID.iam.gserviceaccount.com'
+      - '--set-env-vars'
+      - 'GCP_PROJECT_ID=$PROJECT_ID,GCP_REGION=${_REGION},GOOGLE_API_KEY=${_GOOGLE_API_KEY},GCS_CONTRACTS_BUCKET=contract-mining-assistant-contract,GCS_AMENDMENTS_BUCKET=contract-mining-assistant-amendments,GCS_PREVIEW_BUCKETS=contract-mining-assistant-previews,GCS_TEMP_BUCKET=contract-mining-assistant-temps,GCS_EMBEDDINGS_BUCKET=contract-mining-assistant-temps,VERTEX_AI_LOCATION=${_REGION},EMBEDDING_MODEL=text-embedding-004,VECTOR_SEARCH_INDEX_ENDPOINT=7291690635549999104,VECTOR_SEARCH_INDEX_ID=8675879017896738816,VECTOR_SEARCH_DEPLOYED_INDEX_ID=contract_mining_kb_deployed,DOCUMENT_AI_PROCESSOR_ID=2a0d577ae9cb3df4,DOCUMENT_AI_LOCATION=us'
+      - '--memory'
+      - '2Gi'
+      - '--cpu'
+      - '2'
+      - '--timeout'
+      - '300'
+      - '--max-instances'
+      - '10'
+      - '--min-instances'
+      - '0'
+
+substitutions:
+  _SERVICE_NAME: contract-mining-backend
+  _REGION: us-central1
+  _GOOGLE_API_KEY: ''
+
+options:
+  logging: CLOUD_LOGGING_ONLY

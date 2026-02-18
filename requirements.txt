@@ -1,0 +1,22 @@
+# FastAPI Framework
+fastapi
+uvicorn[standard]
+python-multipart
+
+# Configuration
+python-dotenv
+pydantic-settings
+
+# GCP Libraries
+google-generativeai
+google-cloud-storage
+google-cloud-aiplatform
+
+# Document Processing
+PyPDF2
+python-docx
+Pillow
+reportlab
+
+# Data Processing
+numpy
