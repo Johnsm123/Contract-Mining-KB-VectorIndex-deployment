@@ -20,3 +20,5 @@ reportlab
 
 # Data Processing
 numpy
+pandas
+google-api-python-client
