@@ -9,6 +9,7 @@ from vertexai.language_models import TextEmbeddingModel
 import hashlib
 from datetime import datetime
 import numpy as np
+import asyncio
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +31,7 @@ class GCPDocumentProcessor:
         self.contracts_bucket = "contract-mining-assistant-contract"
         self.temp_bucket = "contract-mining-assistant-temps"
     
-    async def process_uploaded_file(self, file_path: Path, text_content: str) -> Dict:
+    async def process_uploaded_file(self, file_path: Path, text_content: str, is_amendment: bool = False) -> Dict:
         """Process file and store embeddings in GCS"""
         try:
             chunks = self._split_into_chunks(text_content, file_path.name)
@@ -48,13 +49,19 @@ class GCPDocumentProcessor:
                     "created_at": datetime.utcnow().isoformat()
                 })
             
-            # Store embeddings in GCS
+            # Store embeddings in GCS (embeddings/ for base contracts, kb/ for amendments)
+            folder = "kb" if is_amendment else "embeddings"
             bucket = self.storage_client.bucket(self.temp_bucket)
-            blob = bucket.blob(f"embeddings/{file_path.stem}_embeddings.json")
+            embeddings_filename = f"{file_path.stem}_embeddings.json"
+            blob = bucket.blob(f"{folder}/{embeddings_filename}")
             blob.upload_from_string(json.dumps(embeddings_data), content_type="application/json")
             
-            logger.info(f"Processed {file_path.name}: {len(chunks)} chunks")
-            return {"success": True, "filename": file_path.name, "chunks": len(chunks)}
+            logger.info(f"Processed {file_path.name}: {len(chunks)} chunks in {folder}/")
+            
+            # Sync to Cloud SQL (non-blocking)
+            asyncio.create_task(self._sync_to_sql(embeddings_filename, folder))
+            
+            return {"success": True, "filename": file_path.name, "chunks": len(chunks), "synced_to_sql": True}
             
         except Exception as e:
             logger.error(f"Error processing {file_path}: {e}")
@@ -82,16 +89,17 @@ class GCPDocumentProcessor:
             # Generate query embedding
             query_embedding = np.array(self.embedding_model.get_embeddings([query])[0].values)
             
-            # Load embeddings from GCS
+            # Load embeddings from both folders in GCS
             bucket = self.storage_client.bucket(self.temp_bucket)
-            blobs = bucket.list_blobs(prefix="embeddings/")
-            
             all_chunks = []
-            for blob in blobs:
-                if blob.name.endswith(".json"):
-                    content = blob.download_as_text()
-                    chunks = json.loads(content)
-                    all_chunks.extend(chunks)
+            
+            for folder in ["embeddings", "kb"]:
+                blobs = bucket.list_blobs(prefix=f"{folder}/")
+                for blob in blobs:
+                    if blob.name.endswith(".json"):
+                        content = blob.download_as_text()
+                        chunks = json.loads(content)
+                        all_chunks.extend(chunks)
             
             if not all_chunks:
                 return []
@@ -121,6 +129,18 @@ class GCPDocumentProcessor:
         except Exception as e:
             logger.error(f"Embedding generation failed: {e}")
             return []
+    
+    async def _sync_to_sql(self, embeddings_filename: str, folder: str = "embeddings"):
+        """Sync embeddings to Cloud SQL (called automatically after upload)"""
+        try:
+            from app.services.embeddings_sync_service import embeddings_sync_service
+            result = await embeddings_sync_service.sync_to_sql(embeddings_filename, folder)
+            if result["success"]:
+                logger.info(f"Synced {folder}/{embeddings_filename} to SQL: {result['rows_synced']} rows")
+            else:
+                logger.error(f"Failed to sync {folder}/{embeddings_filename} to SQL: {result.get('error')}")
+        except Exception as e:
+            logger.error(f"Error syncing to SQL: {str(e)}")
 
 # Initialize singleton
 from app.config.settings import settings
