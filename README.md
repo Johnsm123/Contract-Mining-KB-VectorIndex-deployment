@@ -1,4 +1,4 @@
-# Contract Mining Assistant FsOgvcoxZNko5QpGtcSiTLjq4wDqKYjVA85N57I4SNqCuwlS1Iz9JQQJ99CCACHYHv6XJ3w3AAAAACOGcXgL
+# Contract Mining Assistant 
 [![Deploy to Cloud Run](https://github.com/your-username/contract-mining-assistant/workflows/Deploy%20to%20Cloud%20Run/badge.svg)](https://github.com/your-username/contract-mining-assistant/actions)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.104.1-green.svg)](https://fastapi.tiangolo.com/)
